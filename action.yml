@@ -1,0 +1,64 @@
+name: 'TreeMapper Diff Context'
+description: 'Extract smart diff context for AI code review using Personalized PageRank algorithm'
+author: 'Nikolay Eremeev'
+
+branding:
+  icon: 'git-pull-request'
+  color: 'blue'
+
+inputs:
+  diff-range:
+    description: 'Git diff range. Auto-detected if not specified: PR→base..head, Push→before..after, Fallback→HEAD~1..HEAD'
+    required: false
+    default: ''
+  path:
+    description: 'Path to repository root'
+    required: false
+    default: '.'
+  budget:
+    description: 'Token budget for output (default: 50000)'
+    required: false
+    default: '50000'
+  format:
+    description: 'Output format: yaml, json, txt, md'
+    required: false
+    default: 'yaml'
+  alpha:
+    description: 'PPR damping factor (0-1, default: 0.60) - controls influence propagation'
+    required: false
+    default: '0.60'
+  tau:
+    description: 'Stopping threshold for marginal utility (default: 0.08)'
+    required: false
+    default: '0.08'
+  full:
+    description: 'Skip smart selection, include all changed code (true/false)'
+    required: false
+    default: 'false'
+  no-content:
+    description: 'Structure only without file contents (true/false)'
+    required: false
+    default: 'false'
+
+outputs:
+  context:
+    description: 'The extracted diff context in specified format'
+  context-file:
+    description: 'Path to the context output file'
+  fragment-count:
+    description: 'Number of code fragments in the context'
+  token-count:
+    description: 'Approximate token count of the output'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.diff-range }}
+    - ${{ inputs.path }}
+    - ${{ inputs.budget }}
+    - ${{ inputs.format }}
+    - ${{ inputs.alpha }}
+    - ${{ inputs.tau }}
+    - ${{ inputs.full }}
+    - ${{ inputs.no-content }}
