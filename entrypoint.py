@@ -104,18 +104,20 @@ def main():
 
     fragment_count = "0"
     if output_format in ("yaml", "yml"):
-        match = re.search(r"fragment_count:\s*(\d+)", context)
-        if match:
-            fragment_count = match.group(1)
+        fragment_count = str(len(re.findall(r"^\s+- path:", context, re.MULTILINE)))
     elif output_format == "json":
         try:
             data = json.loads(context)
-            fragment_count = str(data.get("fragment_count", 0))
+            fragments = data.get("fragments", [])
+            fragment_count = str(len(fragments))
         except json.JSONDecodeError:
             pass
 
-    token_match = re.search(r"([\d,~]+)\s+tokens", result.stderr or "")
+    stderr = result.stderr or ""
+    token_match = re.search(r"([\d,]+)\s+tokens", stderr)
+    size_match = re.search(r"([\d.]+\s*[KMG]?B)", stderr)
     token_count = token_match.group(1).replace(",", "") if token_match else "0"
+    size = size_match.group(1) if size_match else "0"
 
     github_output = os.environ.get("GITHUB_OUTPUT")
     if github_output:
@@ -123,6 +125,7 @@ def main():
             f.write(f"context-file={output_filename}\n")
             f.write(f"fragment-count={fragment_count}\n")
             f.write(f"token-count={token_count}\n")
+            f.write(f"size={size}\n")
 
             delimiter = "EOF_CONTEXT_DELIMITER"
             f.write(f"context<<{delimiter}\n")

@@ -49,6 +49,8 @@ outputs:
     description: 'Number of code fragments in the context'
   token-count:
     description: 'Approximate token count of the output'
+  size:
+    description: 'Size of the output file'
 
 runs:
   using: 'docker'
