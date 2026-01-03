@@ -61,7 +61,8 @@ def main():
     if git_config_result.returncode != 0:
         print(f"::warning::Failed to set safe.directory: {git_config_result.stderr}")
 
-    output_file = f"{workspace}/treemapper-context.{output_format}"
+    output_filename = f"treemapper-context.{output_format}"
+    output_file = f"{workspace}/{output_filename}"
 
     cmd = [
         "treemapper",
@@ -119,7 +120,7 @@ def main():
     github_output = os.environ.get("GITHUB_OUTPUT")
     if github_output:
         with open(github_output, "a") as f:
-            f.write(f"context-file={output_file}\n")
+            f.write(f"context-file={output_filename}\n")
             f.write(f"fragment-count={fragment_count}\n")
             f.write(f"token-count={token_count}\n")
 
