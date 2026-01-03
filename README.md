@@ -60,16 +60,14 @@ jobs:
         with:
           header: treemapper
           message: |
-            ## 📊 Diff Context Ready
+            ## Diff Context
 
             | Metric | Value |
             |--------|-------|
             | Fragments | ${{ steps.context.outputs.fragment-count }} |
             | Tokens | ~${{ steps.context.outputs.token-count }} |
 
-            📥 [Download context](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.artifact.outputs.artifact-id }})
-
-            Use this context for AI code review with ChatGPT, Claude, or other LLMs.
+            [Download context](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.artifact.outputs.artifact-id }})
 ```
 
 **Zero configuration needed!** The action automatically detects the diff range from PR events.
