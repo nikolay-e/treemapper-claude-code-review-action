@@ -1,4 +1,4 @@
-name: Diff Context
+name: Claude Code Review
 
 on:
   workflow_call:
@@ -36,7 +36,7 @@ jobs:
 
       - name: Extract diff context
         id: context
-        uses: nikolay-e/treemapper-action@v1
+        uses: nikolay-e/treemapper-claude-code-review-action@v1
         with:
           budget: ${{ inputs.budget }}
           format: ${{ inputs.format }}
@@ -52,9 +52,9 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          header: treemapper
+          header: treemapper-claude-code-review
           message: |
-            ## Diff Context
+            ## Claude Code Review Context
 
             | Metric | Value |
             |--------|-------|
@@ -64,4 +64,4 @@ jobs:
 
             [Download context](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.artifact.outputs.artifact-id }})
 
-            Use this context for AI code review with ChatGPT, Claude, or other LLMs.
+            Use this context for code review with Claude Code.

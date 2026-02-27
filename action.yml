@@ -1,5 +1,5 @@
-name: 'TreeMapper Diff Context'
-description: 'Extract smart diff context for AI code review using Personalized PageRank algorithm'
+name: 'TreeMapper Claude Code Review'
+description: 'Extract smart diff context for code review with Claude Code using Personalized PageRank algorithm'
 author: 'Nikolay Eremeev'
 
 branding:

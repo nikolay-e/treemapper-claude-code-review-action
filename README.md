@@ -1,15 +1,15 @@
-# TreeMapper Diff Context
+# TreeMapper Claude Code Review
 
-[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-TreeMapper-blue?logo=github)](https://github.com/marketplace/actions/treemapper-diff-context)
-[![License](https://img.shields.io/github/license/nikolay-e/treemapper-action)](LICENSE)
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-TreeMapper_Claude_Code_Review-blue?logo=github)](https://github.com/marketplace/actions/treemapper-claude-code-review)
+[![License](https://img.shields.io/github/license/nikolay-e/treemapper-claude-code-review-action)](LICENSE)
 
-**Smart diff context for AI code reviews. Uses PageRank to extract relevant code, not just changed lines.**
+**Smart diff context for Claude Code review. Uses PageRank to extract relevant code, not just changed lines.**
 
 ## Quick Start
 
 ```yaml
-# .github/workflows/diff-context.yml
-name: Diff Context
+# .github/workflows/claude-code-review.yml
+name: Claude Code Review
 on: [pull_request]
 
 permissions:
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   diff:
-    uses: nikolay-e/treemapper-action/.github/workflows/diff-context.yml@v1
+    uses: nikolay-e/treemapper-claude-code-review-action/.github/workflows/claude-code-review.yml@v1
 ```
 
 Extracts context, uploads artifact, comments on PR with download link.
@@ -57,7 +57,7 @@ Extracts context, uploads artifact, comments on PR with download link.
   with:
     fetch-depth: 0
 
-- uses: nikolay-e/treemapper-action@v1
+- uses: nikolay-e/treemapper-claude-code-review-action@v1
   id: ctx
   with:
     budget: '25000'
