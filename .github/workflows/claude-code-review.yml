@@ -24,6 +24,10 @@ on:
         description: 'Custom instructions appended to review prompt'
         type: string
         default: ''
+      max_diff_lines:
+        description: 'Skip review if diff exceeds this many lines'
+        type: number
+        default: 5000
       treemapper_comment:
         description: 'Post sticky TreeMapper metrics comment on PR'
         type: boolean
@@ -119,6 +123,19 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         with:
           fetch-depth: 0
+
+      - name: Check diff size
+        if: steps.check.outputs.skip != 'true'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MAX_LINES: ${{ inputs.max_diff_lines }}
+        run: |
+          LINES=$(gh pr diff "$PR_NUMBER" | wc -l)
+          if [ "$LINES" -gt "$MAX_LINES" ]; then
+            echo "::error::Diff too large ($LINES lines > $MAX_LINES limit)"
+            exit 1
+          fi
+          echo "::notice::Diff size: $LINES lines (limit: $MAX_LINES)"
 
       - name: Download TreeMapper context
         if: steps.check.outputs.skip != 'true'

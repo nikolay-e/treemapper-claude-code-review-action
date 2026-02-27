@@ -46,6 +46,7 @@ Without `anthropic_api_key`, only extraction runs (artifact + optional metrics c
 | `model` | _(action default)_ | Claude model for review |
 | `max_turns` | `10` | Max Claude agentic iterations |
 | `review_prompt` | _(empty)_ | Custom instructions appended to review prompt |
+| `max_diff_lines` | `5000` | Skip review if diff exceeds this many lines |
 | `treemapper_comment` | `true` | Post sticky TreeMapper metrics comment |
 
 ### Secrets
