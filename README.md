@@ -1,23 +1,22 @@
-# TreeMapper Claude Code Review
+# TreeMapper + Claude Code Review
 
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-TreeMapper_Claude_Code_Review-blue?logo=github)](https://github.com/marketplace/actions/treemapper-claude-code-review)
 [![License](https://img.shields.io/github/license/nikolay-e/treemapper-claude-code-review-action)](LICENSE)
 
-**Smart diff context + Claude Code review for pull requests.**
+Automated PR review powered by [TreeMapper](https://github.com/nikolay-e/treemapper) context extraction and [Claude Code](https://github.com/anthropics/claude-code-action).
 
-TreeMapper extracts relevant code fragments using PageRank, then Claude reviews
-with full structural context — not just changed lines.
+TreeMapper builds a call graph from git diff, ranks code fragments by [PageRank](https://github.com/nikolay-e/treemapper#how-it-works), and feeds them to Claude alongside the raw diff — giving the reviewer structural context that a plain diff cannot provide.
 
 ## Quick Start
 
 ```yaml
-# .github/workflows/code-review.yml
 name: Code Review
 on: [pull_request]
 
 permissions:
   contents: read
   pull-requests: write
+  id-token: write
 
 jobs:
   review:
@@ -26,14 +25,7 @@ jobs:
       anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-## How It Works
-
-1. **Extract** — TreeMapper analyzes the diff, follows call graphs,
-   and extracts code fragments ranked by PageRank relevance
-2. **Review** — Claude reads the structural context + raw diff,
-   then posts a prioritized review (security > bugs > architecture > quality)
-
-Without `anthropic_api_key`, only extraction runs (artifact + optional metrics comment).
+Without `anthropic_api_key`, only TreeMapper extraction runs (artifact + optional metrics comment).
 
 ## Configuration
 
@@ -41,55 +33,44 @@ Without `anthropic_api_key`, only extraction runs (artifact + optional metrics c
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `budget` | `50000` | Token budget for TreeMapper output |
-| `format` | `yaml` | Output format: `yaml`, `json`, `txt`, `md` |
+| `budget` | `50000` | Token budget for TreeMapper (see [TreeMapper docs](https://github.com/nikolay-e/treemapper#usage)) |
+| `format` | `yaml` | TreeMapper output format: `yaml`, `json`, `txt`, `md` |
 | `model` | _(action default)_ | Claude model for review |
-| `max_turns` | `10` | Max Claude agentic iterations |
-| `review_prompt` | _(empty)_ | Custom instructions appended to review prompt |
-| `max_diff_lines` | `5000` | Skip review if diff exceeds this many lines |
-| `treemapper_comment` | `true` | Post sticky TreeMapper metrics comment |
+| `max_turns` | `10` | Max Claude agentic turns |
+| `review_prompt` | _(empty)_ | Custom instructions appended to the built-in review prompt |
+| `max_diff_lines` | `5000` | Fail the check if diff exceeds this many lines |
+| `treemapper_comment` | `true` | Post sticky TreeMapper metrics comment on PR |
 
 ### Secrets
 
 | Secret | Required | Description |
 |--------|----------|-------------|
-| `anthropic_api_key` | No | Anthropic API key. Enables Claude review |
-| `treemapper_issues_token` | No | GitHub PAT for cross-repo issue creation on [nikolay-e/treemapper](https://github.com/nikolay-e/treemapper) |
+| `anthropic_api_key` | No | Anthropic API key — enables Claude review |
+| `treemapper_issues_token` | No | GitHub PAT for filing TreeMapper context quality issues on [nikolay-e/treemapper](https://github.com/nikolay-e/treemapper) |
 
 ### Permissions
 
-Caller workflow needs:
-
 ```yaml
 permissions:
-  contents: read
-  pull-requests: write
+  contents: read        # read repository
+  pull-requests: write  # post review comments
+  id-token: write       # required by claude-code-action
 ```
 
-## Review Categories
+## How It Works
 
-Claude prioritizes findings by severity:
+```
+PR opened / updated
+  -> Job 1: TreeMapper extracts ranked code fragments (call graph + PageRank)
+  -> Job 2: Claude reviews using structural context + raw diff
+       -> Posts findings as PR comment (security > bugs > architecture > quality)
+```
 
-| Priority | Category | Examples |
-|----------|----------|----------|
-| Critical | **Security** | OWASP Top 10, secrets, injection, auth bypass |
-| High | **Bugs** | Edge cases, race conditions, null handling |
-| Medium | **Architecture** | Layering violations, coupling, separation of concerns |
-| Low | **Code quality** | Complexity, duplication, naming |
+Claude evaluates TreeMapper's context quality as part of every review. If `treemapper_issues_token` is provided, significant context issues are filed directly on the [TreeMapper repo](https://github.com/nikolay-e/treemapper/issues).
 
-## TreeMapper Issue Reporting
+## Standalone TreeMapper Extraction
 
-When Claude finds problems with TreeMapper's context quality
-(missing fragments, wrong code, excessive noise):
-
-| `treemapper_issues_token` | Behavior |
-|---------------------------|----------|
-| Provided | Creates issue on [nikolay-e/treemapper](https://github.com/nikolay-e/treemapper) |
-| Not provided | Notes issues in the PR review comment |
-
-## Standalone Usage
-
-Use just the TreeMapper action without Claude review:
+Use the Docker action directly without Claude review:
 
 ```yaml
 - uses: actions/checkout@v4
@@ -107,31 +88,14 @@ Use just the TreeMapper action without Claude review:
     path: ${{ steps.ctx.outputs.context-file }}
 ```
 
-### Action Outputs
-
 | Output | Description |
 |--------|-------------|
-| `context` | Extracted diff context content |
+| `context` | Extracted context content |
 | `context-file` | Path to output file |
 | `fragment-count` | Number of code fragments |
-| `token-count` | Approximate tokens |
-| `size` | Size of the output file |
-
-## Why TreeMapper?
-
-| Traditional Diff | TreeMapper |
-|-----------------|------------|
-| Line-by-line changes | Complete functions and classes |
-| No context | Related callers/callees included |
-| Unlimited output | Token-budget aware (LLM-ready) |
-| All changes equal | PageRank ranks by relevance |
-
-## Links
-
-- [TreeMapper CLI](https://github.com/nikolay-e/treemapper)
-- [Claude Code Action](https://github.com/anthropics/claude-code-action)
-- [PyPI](https://pypi.org/project/treemapper/)
+| `token-count` | Approximate token count |
+| `size` | Output file size |
 
 ## License
 
-Apache 2.0
+[Apache 2.0](LICENSE)
