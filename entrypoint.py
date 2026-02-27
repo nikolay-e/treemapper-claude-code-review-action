@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import secrets
 import subprocess
 import sys
 
@@ -127,7 +128,7 @@ def main():
             f.write(f"token-count={token_count}\n")
             f.write(f"size={size}\n")
 
-            delimiter = "EOF_CONTEXT_DELIMITER"
+            delimiter = f"EOF_{secrets.token_hex(16)}"
             f.write(f"context<<{delimiter}\n")
             f.write(context)
             if not context.endswith("\n"):

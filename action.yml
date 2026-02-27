@@ -8,7 +8,7 @@ branding:
 
 inputs:
   diff-range:
-    description: 'Git diff range. Auto-detected if not specified: PR→base..head, Push→before..after, Fallback→HEAD~1..HEAD'
+    description: 'Git diff range. Auto-detected: PR=base..head, Push=before..after'
     required: false
     default: ''
   path:

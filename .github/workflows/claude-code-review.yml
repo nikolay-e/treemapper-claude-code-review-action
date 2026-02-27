@@ -1,16 +1,40 @@
 name: Claude Code Review
 
+# yamllint disable-line rule:truthy
 on:
   workflow_call:
     inputs:
       budget:
-        description: 'Token budget for output'
+        description: 'Token budget for TreeMapper output'
         type: string
         default: '50000'
       format:
         description: 'Output format: yaml, json, txt, md'
         type: string
         default: 'yaml'
+      model:
+        description: 'Claude model for review'
+        type: string
+        default: ''
+      max_turns:
+        description: 'Max Claude agentic turns'
+        type: number
+        default: 10
+      review_prompt:
+        description: 'Custom instructions appended to review prompt'
+        type: string
+        default: ''
+      treemapper_comment:
+        description: 'Post sticky TreeMapper metrics comment on PR'
+        type: boolean
+        default: true
+    secrets:
+      anthropic_api_key:
+        description: 'Anthropic API key for Claude Code review'
+        required: false
+      treemapper_issues_token:
+        description: 'GitHub PAT for issues on nikolay-e/treemapper'
+        required: false
     outputs:
       fragment-count:
         description: 'Number of code fragments'
@@ -48,13 +72,23 @@ jobs:
           name: diff-context
           path: ${{ steps.context.outputs.context-file }}
 
+      - name: Build artifact URL
+        if: github.event_name == 'pull_request' && inputs.treemapper_comment
+        id: dl
+        env:
+          BASE: ${{ github.server_url }}/${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          ART_ID: ${{ steps.artifact.outputs.artifact-id }}
+        run: |
+          echo "url=${BASE}/actions/runs/${RUN_ID}/artifacts/${ART_ID}" >> "$GITHUB_OUTPUT"
+
       - name: Comment on PR
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && inputs.treemapper_comment
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          header: treemapper-claude-code-review
+          header: treemapper-extraction-metrics
           message: |
-            ## Claude Code Review Context
+            ## TreeMapper Extraction Metrics
 
             | Metric | Value |
             |--------|-------|
@@ -62,6 +96,106 @@ jobs:
             | Tokens | ~${{ steps.context.outputs.token-count }} |
             | Size | ${{ steps.context.outputs.size }} |
 
-            [Download context](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.artifact.outputs.artifact-id }})
+            [Download](${{ steps.dl.outputs.url }})
 
-            Use this context for code review with Claude Code.
+  review:
+    needs: extract
+    if: >-
+      github.event_name == 'pull_request'
+      || github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for API key
+        id: check
+        env:
+          KEY: ${{ secrets.anthropic_api_key }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::No anthropic_api_key — skipping review"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.skip != 'true'
+        with:
+          fetch-depth: 0
+
+      - name: Download TreeMapper context
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: diff-context
+          path: /tmp/treemapper
+
+      - name: Claude Code Review
+        if: steps.check.outputs.skip != 'true'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.anthropic_api_key }}
+          claude_args: >-
+            --max-turns ${{ inputs.max_turns }}
+            ${{ inputs.model && format('--model {0}', inputs.model) || '' }}
+          settings: |
+            {
+              "permissions": {
+                "allow": [
+                  "Read",
+                  "Glob",
+                  "Grep",
+                  "Bash(gh pr diff *)",
+                  "Bash(gh pr view *)",
+                  "Bash(GH_TOKEN=* gh issue create --repo nikolay-e/treemapper *)"
+                ]
+              }
+            }
+          prompt: |
+            Review this PR using TreeMapper-enhanced context.
+
+            ## Step 1: Read TreeMapper Context
+            Find and read the context file in /tmp/treemapper/ (use Glob).
+            It contains code fragments ranked by PageRank — structural
+            context beyond the raw diff (callers, callees, impact graph).
+
+            ## Step 2: Get Raw Diff
+            Run: gh pr diff ${{ github.event.pull_request.number }}
+
+            ## Step 3: Review
+            Analyze changes using both TreeMapper context and raw diff.
+            Prioritize by severity:
+
+            Security (critical): OWASP Top 10, secrets, injection,
+            auth bypass, unsafe deserialization
+
+            Bugs (high): edge cases, race conditions, null handling,
+            off-by-one errors, resource leaks, error handling gaps
+
+            Architecture (medium): layering violations, tight coupling,
+            separation of concerns, API design
+
+            Code quality (low): unnecessary complexity, duplication,
+            unclear naming, dead code
+
+            Only report genuine issues. No style nitpicks.
+            If the code is clean, say so briefly.
+
+            ## Step 4: TreeMapper Quality
+            Evaluate context quality — relevant fragments included?
+            Excessive noise? Missing critical files?
+
+            If significant TreeMapper issues found and TREEMAPPER_PAT
+            env var is non-empty, create a GitHub issue:
+              Repository: nikolay-e/treemapper
+              Command: GH_TOKEN=$TREEMAPPER_PAT gh issue create
+                --repo nikolay-e/treemapper
+                --title "Context quality: <description>"
+                --body "<details>"
+              Include this PR link in the body:
+              ${{ github.event.pull_request.html_url }}
+
+            If TREEMAPPER_PAT is empty, note issues in your review.
+
+            ## Additional Instructions (from caller)
+            ${{ inputs.review_prompt }}
+        env:
+          TREEMAPPER_PAT: ${{ secrets.treemapper_issues_token }}
